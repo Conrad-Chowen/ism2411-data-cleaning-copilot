@@ -1,72 +1,43 @@
-# Purpose: Clean the raw sales dataset by standardizing column names,
-# stripping whitespace, handling missing values, and removing invalid rows.
+"""
+data_cleaning.py
+
+Purpose: Load a messy sales dataset, clean it (standardize column names, handle missing values, remove invalid rows),
+and save the cleaned data for analysis.
+"""
 
 import pandas as pd
+import os
 
-# Copilot-assisted function #1
-# This function loads a CSV file into a DataFrame.
-def load_data(file_path: str):
-    """
-    Load CSV file into a pandas DataFrame.
-    """
-    return pd.read_csv(file_path)
+# Set base directory relative to this script
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# Copilot-assisted function #2
-# Standardizes column names to lowercase and underscores.
-def clean_column_names(df):
-    """
-    Standardize column names: lowercase and replace spaces with underscores.
-    """
-    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
-    return df
+# Define file paths
+RAW_PATH = os.path.join(BASE_DIR, "data/raw/sales_data_raw.csv")
+CLEAN_PATH = os.path.join(BASE_DIR, "data/processed/sales_data_clean.csv")
 
-def strip_whitespace(df):
-    """
-    Remove leading/trailing whitespace from string columns like product names and categories.
-    """
-    str_cols = df.select_dtypes(include='object').columns
-    for col in str_cols:
-        df[col] = df[col].str.strip()
-    return df
+# Load the raw CSV data
+df = pd.read_csv(RAW_PATH)
 
-def handle_missing_values(df):
-    """
-    Drop rows with missing price or quantity.
-    """
-    df = df.dropna(subset=['price', 'quantity'])
-    return df
+# Standardize column names: lowercase and replace spaces with underscores
+df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
 
-def remove_invalid_rows(df):
-    """
-    Remove rows where price or quantity is negative.
-    """
-    df = df[df['price'] >= 0]
-    df = df[df['quantity'] >= 0]
-    return df
+# Remove extra whitespace from string columns
+for col in df.select_dtypes(include='object').columns:
+    df[col] = df[col].str.strip()
 
-if __name__ == "__main__":
-    raw_path = "data/raw/sales_data_raw.csv"
-    cleaned_path = "data/processed/sales_data_clean.csv"
+# Handle missing values
+if 'quantity' in df.columns:
+    df['quantity'] = df['quantity'].fillna(0)  # fill missing quantities with 0
+if 'price' in df.columns:
+    df['price'] = df['price'].fillna(df['price'].median())  # fill missing prices with median
 
-    # Load raw data
-    df_raw = load_data(raw_path)
+# Remove invalid rows with negative quantity or price
+df = df[(df['quantity'] >= 0) & (df['price'] >= 0)]
 
-    # Clean column names
-    df_clean = clean_column_names(df_raw)
+# Create processed folder if it doesn't exist and save cleaned CSV
+os.makedirs(os.path.join(BASE_DIR, "data/processed"), exist_ok=True)
+df.to_csv(CLEAN_PATH, index=False)
 
-    # Strip whitespace from text columns
-    df_clean = strip_whitespace(df_clean)
-
-    # Handle missing values
-    df_clean = handle_missing_values(df_clean)
-
-    # Remove invalid rows
-    df_clean = remove_invalid_rows(df_clean)
-
-    # Save cleaned CSV
-    df_clean.to_csv(cleaned_path, index=False)
-
-    # Preview first few rows
-    print("Cleaning complete. First few rows:")
-    print(df_clean.head())
-
+# Print first few rows to verify
+print("Cleaning complete. First few rows:")
+print(df.head())
