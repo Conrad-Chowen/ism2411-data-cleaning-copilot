@@ -20,19 +20,29 @@ df = pd.read_csv(RAW_PATH)
 
 # Standardize column names: lowercase and replace spaces with underscores
 df.columns = [c.strip().lower().replace(" ", "_") for c in df.columns]
+print("Columns after cleaning:", df.columns.tolist())
 
 # Remove extra whitespace from string columns
 for col in df.select_dtypes(include='object').columns:
     df[col] = df[col].str.strip()
 
-# Handle missing values
-if 'quantity' in df.columns:
-    df['quantity'] = df['quantity'].fillna(0)  # fill missing quantities with 0
+# Convert columns to numeric; invalid entries become NaN
 if 'price' in df.columns:
-    df['price'] = df['price'].fillna(df['price'].median())  # fill missing prices with median
+    df['price'] = pd.to_numeric(df['price'], errors='coerce')
+if 'qty' in df.columns:  # updated column name
+    df['qty'] = pd.to_numeric(df['qty'], errors='coerce')
 
-# Remove invalid rows with negative quantity or price
-df = df[(df['quantity'] >= 0) & (df['price'] >= 0)]
+# Fill missing values with median (only if the column exists)
+if 'price' in df.columns:
+    df['price'] = df['price'].fillna(df['price'].median())
+if 'qty' in df.columns:  # updated column name
+    df['qty'] = df['qty'].fillna(df['qty'].median())
+
+# Remove rows with negative price or quantity if columns exist
+if 'price' in df.columns:
+    df = df[df['price'] >= 0]
+if 'qty' in df.columns:  # updated column name
+    df = df[df['qty'] >= 0]
 
 # Create processed folder if it doesn't exist and save cleaned CSV
 os.makedirs(os.path.join(BASE_DIR, "data/processed"), exist_ok=True)
